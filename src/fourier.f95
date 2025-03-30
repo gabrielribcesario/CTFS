@@ -1,54 +1,54 @@
-module fourier
-    use iso_fortran_env, only : wp=>real64
-    implicit none
-    real(wp), parameter :: tau = 2.0_wp * 3.14159265358979323846_wp
-    complex(wp), parameter :: imag_tau = (0.0_wp, tau)
+MODULE fourier
+    USE iso_fortran_env, ONLY : wp=>REAL64
+    IMPLICIT NONE
+    REAL(wp), PARAMETER :: tau = 2.0_wp * 3.14159265358979323846_wp
+    COMPLEX(wp), PARAMETER :: imag_tau = (0.0_wp, tau)
 
-    private
-    public :: fourier_transform, f_x
+    PRIVATE
+    PUBLIC :: ctft_coefficients, f_x
 
-    abstract interface
-        pure function f_x(x) result(y)
-            use iso_fortran_env, only : wp=>real64
-            implicit none
-            real(wp), intent(in) :: x
-            real(wp) :: y
-        end function
-    end interface
+    ABSTRACT INTERFACE
+        PURE FUNCTION f_x(x) RESULT(y)
+            USE iso_fortran_env, ONLY : wp=>REAL64
+            IMPLICIT NONE
+            REAL(wp), INTENT(IN) :: x
+            REAL(wp) :: y
+        END FUNCTION
+    END INTERFACE
 
-    contains
-        function fourier_transform(f, a, t0, ncoeff) result(coeff)
-            use iso_fortran_env, only : wp=>real64
-            implicit none
-            procedure(f_x), pointer :: f ! Function to be approximated
-            integer, intent(in) :: ncoeff ! Number of Fourier coefficients
-            real(wp), intent(in) :: t0 ! Period [s]
-            real(wp), intent(in) :: a ! Initial t
-            complex(wp) :: coeff(ncoeff)
-            complex(wp) :: area ! Helper variable for trapezoidal rule integration
-            real(wp) :: w0, h_n
-            integer :: i, n, nintervals
+    CONTAINS
+        FUNCTION ctft_coefficients(f, a, t0, ncoeff) RESULT(coeff)
+            USE iso_fortran_env, ONLY : wp=>REAL64
+            IMPLICIT NONE
+            PROCEDURE(f_x), POINTER :: f ! Function to be approximated
+            INTEGER, INTENT(IN) :: ncoeff ! Number of Fourier coefficients
+            REAL(wp), INTENT(IN) :: t0 ! Period [s]
+            REAL(wp), INTENT(IN) :: a ! Initial t
+            COMPLEX(wp) :: coeff(ncoeff)
+            COMPLEX(wp) :: area, complex_freq ! Helper variables for trapezoidal rule integration
+            REAL(wp) :: w0, h_n
+            INTEGER :: i, n, nintervals
 
-            nintervals = ceiling(t0 / 5.0E-5_wp)
-            h_n = t0 / nintervals
-            ! Fundamental frequency [rad/s], w0 = 2pi / T0 
-            w0 = tau / t0
-            do n = 0, ncoeff - 1
+            w0 = tau / t0 ! Fundamental frequency [rad/s], w0 = 2pi/T0
+            nintervals = ceiling(t0 / 1.0E-4_wp) 
+            h_n = t0 / nintervals 
+            DO n = 1, ncoeff
+                complex_freq = imag_tau * (n - 1) * w0
                 ! Trapezoidal rule integration
-                area = (integrand(a) + integrand(a + t0)) / 2.0_wp
-                do i = 1, nintervals - 1
-                    area = area + integrand(a + i * h_n)
-                end do
-                ! n-th coefficient
-                coeff(1 + n) = area * h_n / t0
-            end do
+                area = (integrand(a, complex_freq) + integrand(a + t0, complex_freq)) / 2.0_wp
+                DO i = 1, nintervals - 1
+                    area = area + integrand(a + i * h_n, complex_freq)
+                END DO
+                coeff(n) = area * h_n / t0 ! n-th coefficient
+            END DO
 
-            contains 
-                function integrand(t) result(y)
-                    implicit none
-                    real(wp), intent(in) :: t
-                    complex(wp) :: y
-                    y = f(t) * exp( -imag_tau * n * w0 * t)
-                end function
-        end function
-end module
+            CONTAINS 
+                FUNCTION integrand(t, jw) RESULT(y)
+                    IMPLICIT NONE
+                    COMPLEX(wp), INTENT(IN) :: jw ! Complex frequency [Hz]
+                    REAL(wp), INTENT(IN) :: t ! Time [s]
+                    COMPLEX(wp) :: y
+                    y = f(t) * exp( -jw * t )
+                END FUNCTION
+        END FUNCTION
+END MODULE
