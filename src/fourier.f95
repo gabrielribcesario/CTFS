@@ -1,20 +1,12 @@
 MODULE fourier
     USE iso_fortran_env, ONLY : wp=>REAL64
+    USE functions, ONLY : f_x
     IMPLICIT NONE
     REAL(wp), PARAMETER :: tau = 2.0_wp * 3.14159265358979323846_wp
-    COMPLEX(wp), PARAMETER :: imag_tau = (0.0_wp, tau)
+    COMPLEX(wp), PARAMETER :: imag = (0.0_wp, 1.0_wp)
 
     PRIVATE
-    PUBLIC :: ctft_coefficients, f_x
-
-    ABSTRACT INTERFACE
-        PURE FUNCTION f_x(x) RESULT(y)
-            USE iso_fortran_env, ONLY : wp=>REAL64
-            IMPLICIT NONE
-            REAL(wp), INTENT(IN) :: x
-            REAL(wp) :: y
-        END FUNCTION
-    END INTERFACE
+    PUBLIC :: ctft_coefficients
 
     CONTAINS
         FUNCTION ctft_coefficients(f, a, t0, ncoeff) RESULT(coeff)
@@ -30,10 +22,10 @@ MODULE fourier
             INTEGER :: i, n, nintervals
 
             w0 = tau / t0 ! Fundamental frequency [rad/s], w0 = 2pi/T0
-            nintervals = ceiling(t0 / 1.0E-4_wp) 
+            nintervals = ceiling(t0 / 1.0E-4_wp) ! 1E-4 width intervals should be accurate enoughs
             h_n = t0 / nintervals 
             DO n = 1, ncoeff
-                complex_freq = imag_tau * (n - 1) * w0
+                complex_freq = imag * (n - 1) * w0
                 ! Trapezoidal rule integration
                 area = (integrand(a, complex_freq) + integrand(a + t0, complex_freq)) / 2.0_wp
                 DO i = 1, nintervals - 1
