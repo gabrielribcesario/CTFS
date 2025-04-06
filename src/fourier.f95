@@ -1,46 +1,44 @@
 MODULE fourier
     USE iso_fortran_env, ONLY : wp=>REAL64
-    USE functions, ONLY : f_x
+    USE functions, ONLY : f_t
+    USE omp_lib
     IMPLICIT NONE
-    REAL(wp), PARAMETER :: tau = 2.0_wp * 3.14159265358979323846_wp
-    COMPLEX(wp), PARAMETER :: imag = (0.0_wp, 1.0_wp)
+    REAL(wp), PARAMETER :: M_TAU = 2.0_wp * 3.14159265358979323846_wp
 
     PRIVATE
     PUBLIC :: ctft_coefficients
 
     CONTAINS
-        FUNCTION ctft_coefficients(f, a, t0, ncoeff) RESULT(coeff)
+        COMPLEX(wp) FUNCTION ctft_coefficients(f, p, ncoeff) RESULT(coeff)
             USE iso_fortran_env, ONLY : wp=>REAL64
             IMPLICIT NONE
-            PROCEDURE(f_x), POINTER :: f ! Function to be approximated
+            PROCEDURE(f_t), POINTER, INTENT(IN) :: f ! Function to be approximated
             INTEGER, INTENT(IN) :: ncoeff ! Number of Fourier coefficients
-            REAL(wp), INTENT(IN) :: t0 ! Period [s]
-            REAL(wp), INTENT(IN) :: a ! Initial t
-            COMPLEX(wp) :: coeff(ncoeff)
-            COMPLEX(wp) :: area, complex_freq ! Helper variables for trapezoidal rule integration
-            REAL(wp) :: w0, h_n
-            INTEGER :: i, n, nintervals
+            REAL(wp), INTENT(IN) :: p(4) ! [t0, DC, A, phi]
+            DIMENSION coeff(ncoeff)
 
-            w0 = tau / t0 ! Fundamental frequency [rad/s], w0 = 2pi/T0
-            nintervals = ceiling(t0 / 1.0E-4_wp) ! 1E-4 width intervals should be accurate enoughs
-            h_n = t0 / nintervals 
+            COMPLEX(wp) :: area, jw ! Helper variables for trapezoidal rule integration
+            REAL(wp) :: t0 ! Period [s]
+            REAL(wp) :: w0, h_n, t
+            INTEGER :: i, n
+            INTEGER :: nintervals
+
+            t0 = p(1)
+            nintervals = ceiling(t0 / 1.0E-5_wp) ! ~1E-5 width intervals should be more than accurate enough
+            h_n = t0 / nintervals
+            w0 = M_TAU / t0 ! Fundamental frequency [rad/s], w0 = 2pi/T0
+            !$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(jw, area, t) 
             DO n = 1, ncoeff
-                complex_freq = imag * (n - 1) * w0
+                jw = COMPLEX(0.0_wp, (n - 1) * w0) ! Complex frequency [rad/s]
                 ! Trapezoidal rule integration
-                area = (integrand(a, complex_freq) + integrand(a + t0, complex_freq)) / 2.0_wp
+                area = (f(0.0_wp, p) + f(t0, p) * exp( -jw * t0 )) / 2.0_wp
                 DO i = 1, nintervals - 1
-                    area = area + integrand(a + i * h_n, complex_freq)
+                    t = i * h_n
+                    area = area + f(t, p) * exp( -jw * t )
                 END DO
-                coeff(n) = area * h_n / t0 ! n-th coefficient
+                area = area / nintervals ! area * h_n / t0
+                coeff(n) = area ! n-th coefficient
             END DO
-
-            CONTAINS 
-                FUNCTION integrand(t, jw) RESULT(y)
-                    IMPLICIT NONE
-                    COMPLEX(wp), INTENT(IN) :: jw ! Complex frequency [Hz]
-                    REAL(wp), INTENT(IN) :: t ! Time [s]
-                    COMPLEX(wp) :: y
-                    y = f(t) * exp( -jw * t )
-                END FUNCTION
+            !$OMP END PARALLEL DO
         END FUNCTION
 END MODULE
