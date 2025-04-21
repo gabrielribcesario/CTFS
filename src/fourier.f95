@@ -1,7 +1,6 @@
 MODULE fourier
     USE iso_fortran_env, ONLY : dp=>REAL64
     USE functions, ONLY : f_t
-    USE omp_lib
     IMPLICIT NONE
     REAL(dp), PARAMETER :: M_TAU = 2.0_dp * 3.14159265358979323846_dp
 
@@ -22,10 +21,10 @@ MODULE fourier
             INTEGER, INTENT(OUT) :: nrun ! Less than or equal to max_iter
 
             COMPLEX(dp) :: area, jw ! Helper variables for the trapezoidal rule integration step
+            REAL(dp) :: w0, h_n, mse, kk ! More helper variables
             REAL(dp) :: t0 ! Period [s]
             REAL(dp), ALLOCATABLE :: signal(:) ! Function to be approximated, evaluated at the points that define the integration subintervals
             REAL(dp), ALLOCATABLE :: err(:) ! Residual, i.e. err(t) = signal(t) - Σ D_n*exp(jnw*t)
-            REAL(dp) :: w0, h_n, mse
             INTEGER :: i, n
             INTEGER :: nsteps
 
@@ -53,26 +52,18 @@ MODULE fourier
                 area = area / nsteps ! area = area * h_n / t0; h_n = t0 / nsteps
                 coeff(n) = area ! n-th coefficient
 
-                ! Check stopping criteria: mse = sqrt( ∫[(f(t) - g(t))^2]dt / ∫dt )
-                IF (n == 1) THEN ! Remove DC component from the signal
-                    coeff(1)%im = 0.0_dp ! Also make Im(D_1) = 0
-                    err(1) = err(1) - REAL(coeff(1))
-                    err(nsteps + 1) = err(nsteps + 1) - REAL(coeff(1))
-                    mse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
-                    DO i = 2, nsteps
-                        err(i) = err(i) - REAL(coeff(1))
-                        mse = mse + err(i)**2
-                    END DO
-                ELSE
-                    err(1) = err(1) - 2.0_dp * REAL(coeff(n))
-                    err(nsteps + 1) = err(nsteps + 1) - 2.0_dp * REAL(coeff(n) * exp( jw * t0 ))
-                    mse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
-                    DO i = 2, nsteps
-                        err(i) = err(i) - 2.0_dp * REAL(coeff(n) * exp( jw * (i - 1) * h_n ))
-                        mse = mse + err(i)**2
-                    END DO
-                END IF
-                mse = mse / (nsteps * t0) ! mse = mse * h_n / t0^2; h_n = t0 / nsteps
+                kk = merge(1.0_dp, 2.0_dp, n == 1) ! If true, k=1; If false, k=2
+                ! Update the residual
+                err(1) = err(1) - kk * REAL(coeff(n))
+                err(nsteps + 1) = err(nsteps + 1) - kk * REAL(coeff(n) * exp( jw * t0 ))
+                ! Check stopping criteria: MSE = ∫[(f(t) - g(t))^2]dt / ∫dt. 
+                ! Trapezoidal rule integration
+                mse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
+                DO i = 2, nsteps
+                    err(i) = err(i) - kk * REAL(coeff(n) * exp( jw * (i - 1) * h_n )) ! Update the residual
+                    mse = mse + err(i)**2
+                END DO
+                mse = mse / (nsteps * t0) ! MSE = MSE * h_n / t0^2; h_n = t0 / nsteps
                 history(1, n) = mse ! MSE
                 history(2, n) = sqrt( mse ) ! RMSE
 

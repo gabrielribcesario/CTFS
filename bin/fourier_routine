@@ -25,6 +25,10 @@ while true; do
     case "$1" in
         -t | --period)
             T0="$2"
+            if (($(bc -l <<< "$T0 <= 0.0"))); then
+                echo "ValueError: Period must be greater than zero.. Value is: $T0"
+                exit 1
+            fi
             shift 2
             ;;
         -d | --DC)
@@ -41,6 +45,10 @@ while true; do
             ;;
         -e | --tolerance)
             TOL="$2"
+            if (($(bc -l <<< "$TOL <= 0.0"))); then
+                echo "ValueError: Tolerance must be greater than zero. Value is: $TOL"
+                exit 1
+            fi
             shift 2
             ;;
         -f | --function)
@@ -60,7 +68,7 @@ while true; do
                     FUNC="TRIANGLE"
                     ;;
                 *)
-                    echo "FunctionNotImplemented Error: $FUNC. Options are: sine, sin, square, sqr, sawtooth, saw, triangle, tri."
+                    echo "FunctionNotImplementedError: $FUNC. Options are: sine, sin, square, sqr, sawtooth, saw, triangle, tri."
                     exit 1
                     ;;
             esac

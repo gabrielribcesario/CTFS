@@ -1,23 +1,27 @@
 #!/bin/bash
 
+# Creates the Python virtual environment.
+
 echo "Creating venv..."
 
+# Create venv
 python3 -m venv ctfs
 if [ $? -ne 0 ]; then
     echo "Internal error! Could not create virtual environment."
     exit 1
 fi
-
+# Activate venv
 source ctfs/bin/activate
 
 echo "Installing required packages..."
 
+# Install pip
 python3 -m pip install pip --upgrade
 if [ $? -ne 0 ]; then
     echo "Internal error! Could not install pip."
     exit 1
 fi
-
+# Install requirements.txt
 pip install -r requirements.txt
 if [ $? -ne 0 ]; then
     echo "Internal error! Could not install the required packages."

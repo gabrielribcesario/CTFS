@@ -85,14 +85,16 @@ else:
 
 # Plot MSE and RMSE history
 fig1, ax1 = plt.subplots(2, 1, figsize=(8, 4))
+xmarg = (n.max() - n.min()) * ax1[-1].margins()[0]
+xlim = [n.min() - xmarg, n.max() + xmarg]
 for i, l in enumerate(hist.columns):
     ax1[i].plot(n, hist[l], label=l)
     ax1[i].set_ylabel(l)
-xmarg = (n.max() - n.min()) * ax1[-1].margins()[0]
-xlim = [n.min() - xmarg, n.max() + xmarg]
-ax1[-1].set_xlim(xlim)
+    ax1[i].set_xlim(xlim)
+    ax1[i].set_xticks(n[::np.where(n.size > 5, 5, 1)])
 ax1[-1].hlines([tol], xlim[0], xlim[1], lw=1.0, ls="-.", color="k")
-fig1.suptitle("Loss x # of Harmonics")
+ax1[-1].set_xlabel("# of Coefficients")
+fig1.suptitle("Loss x # of Coefficients")
 fig1.legend(loc="upper right")
 fig1.tight_layout()
 fig1.savefig("figures/loss.png")
@@ -100,10 +102,11 @@ fig1.show()
 
 # Plot amplitude of the harmonics
 fig2, ax2 = plt.subplots(figsize=(9, 3))
-ax2.stem(n - 1, trig.Amplitude)
+ax2.stem(n[1:] - 1, trig.Amplitude[1:])
 ax2.set_xlabel("n-th Harmonic")
 ax2.set_ylabel("Amplitude")
-fig2.suptitle("Amplitude of {:.2f}[Hz] Harmonics".format(t0**-1))
+ax2.set_xticks(n[1::np.where(n[1:].size > 5, 5, 1)] - 1)
+fig2.suptitle(f"Amplitude of the n-th {t0**-1:.2f}[Hz] Harmonic")
 fig2.tight_layout()
 fig2.savefig("figures/amplitude.png")
 fig2.show()
@@ -111,38 +114,34 @@ fig2.show()
 # Plot approximation and squared error
 fig3, axes3 = plt.subplots(2, 1, figsize=(10, 5))
 ax3, ax4 = axes3
+title3 = fig3.suptitle("Original Signal x Fourier Series\n# of Coefficients: \nMSE = \nRMSE = ")
 # Approximation
 ax3.plot(t, signal, label="Original signal")
 fs_line = ax3.plot(t, np.zeros_like(t), label="Fourier Series Approximation")[0]
 ax3.set_ylabel("Amplitude")
 ax3.set_ylim([dc - amp * 1.3, dc + amp * 1.3])
+ax3.yaxis.set_inverted(False)
 # Squared Error
-mse_line = ax4.plot(t, signal**2, label="Squared Error", c="C2")[0]
+se = (signal - trig_appox(1))**2
+mse_line = ax4.plot(t, se, label="Squared Error", c="C2")[0]
+ax4.set_ylim([-ax4.margins()[1], se.max() + ax4.margins()[1]])
 ax4.set_xlabel("Time [s]")
 ax4.set_ylabel("Squared Error")
 
-title3 = fig3.suptitle("Original Signal x Fourier Series\n# of Harmonics: \nMSE = \nRMSE = ")
-fig3.legend(loc="upper right")
-fig3.tight_layout()
-
+zpad = int(np.log10(n.max())) + 1 # Zero-pad string
 def update_frame(frame):
-    y = trig_appox(frame)
+    y = trig_appox(frame + 1)
     se = (signal - y)**2
-    if frame == 0:
-        # Should be a good enough approximation of the time continuous MSE
-        # for when the # of coefficients equals 0.
-        mse = se[t <= t0].mean() 
-        rmse = np.sqrt( mse )
-    else:
-        mse = hist.MSE[frame - 1]
-        rmse = hist.RMSE[frame - 1]
+    mse, rmse = hist.MSE[frame], hist.RMSE[frame]
 
     fs_line.set_ydata(y)
     mse_line.set_ydata(se)
-    title3.set_text("Original Signal x Fourier Series\n# of Harmonics: {}\nMSE = {:.7f}\nRMSE = {:.7f}".format(frame, mse, rmse))
+    title3.set_text(f"Original Signal x Fourier Series\n# of Coefficients: {str(frame + 1).zfill(zpad)}\nMSE = {mse:.7f}\nRMSE = {rmse:.7f}")
     return (fs_line, mse_line, title3)
 
 # Only animate the 50 first harmonics.
-ani3 = animation.FuncAnimation(fig=fig3, func=update_frame, frames=min(hist.shape[0] + 1, 51), interval=250, repeat_delay=750)
+fig3.legend(loc="upper right")
+fig3.tight_layout()
+ani3 = animation.FuncAnimation(fig=fig3, func=update_frame, frames=min(hist.shape[0], 50), interval=250, repeat_delay=750)
 ani3.save("figures/approximation.gif")
 plt.show()
