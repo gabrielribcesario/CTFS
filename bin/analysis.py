@@ -1,6 +1,5 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-import scipy.integrate as integrate
 import pandas as pd
 import numpy as np
 import argparse
@@ -122,22 +121,28 @@ mse_line = ax4.plot(t, signal**2, label="Squared Error", c="C2")[0]
 ax4.set_xlabel("Time [s]")
 ax4.set_ylabel("Squared Error")
 
-title3 = fig3.suptitle("Original Signal x Fourier Series\n# of Harmonics: \nRMSE=")
+title3 = fig3.suptitle("Original Signal x Fourier Series\n# of Harmonics: \nMSE = \nRMSE = ")
 fig3.legend(loc="upper right")
 fig3.tight_layout()
 
-mask = t <= t0 # Only integrate the 1st period (reduces the numerical error when re-calculating the RMSE)
 def update_frame(frame):
     y = trig_appox(frame)
     se = (signal - y)**2
-    rmse = np.sqrt( integrate.trapezoid(se[mask], dx=1E-5) / t0 )
+    if frame == 0:
+        # Should be a good enough approximation of the time continuous MSE
+        # for when the # of coefficients equals 0.
+        mse = se[t <= t0].mean() 
+        rmse = np.sqrt( mse )
+    else:
+        mse = hist.MSE[frame - 1]
+        rmse = hist.RMSE[frame - 1]
 
     fs_line.set_ydata(y)
     mse_line.set_ydata(se)
-    title3.set_text("Original Signal x Fourier Series\n# of Harmonics: {}\nRMSE={:.7f}".format(frame, rmse))
+    title3.set_text("Original Signal x Fourier Series\n# of Harmonics: {}\nMSE = {:.7f}\nRMSE = {:.7f}".format(frame, mse, rmse))
     return (fs_line, mse_line, title3)
 
-# Only animate the 30 first harmonics.
-ani3 = animation.FuncAnimation(fig=fig3, func=update_frame, frames=min(hist.shape[0] + 1, 50), interval=300)
+# Only animate the 50 first harmonics.
+ani3 = animation.FuncAnimation(fig=fig3, func=update_frame, frames=min(hist.shape[0] + 1, 51), interval=250, repeat_delay=750)
 ani3.save("figures/approximation.gif")
 plt.show()

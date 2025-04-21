@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"
+
 # https://labex.io/tutorials/shell-bash-getopt-391993
 OPTS=$(getopt -o t:d:a:p:f:e: --long period:,dc:,amplitude:,phase:,function:,tolerance: -n 'fourier_routine' -- "$@")
 if [ $? -ne 0 ]; then

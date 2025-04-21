@@ -1,15 +1,14 @@
-# Assignment 1
+<h1 align="left">Continuous Time Fourier Series:</h1>
 
-<h3 align="left">Continuous Time Fourier Series</h3>
+Run the bash script "fourier_routine" located in the bin folder. Optional arguments are:
 
-1. Calculate the coefficients of the Fourier Series (Compact Trigonometric and Exponential);
-2. Calculate the MSE and the RMSE between the Fourier Series approximation and the original function;
-3. Plot the evolution of items 1 (amplitude of harmonics) and 2, along with the Fourier Series approximation as more harmonics are added.
+- **-t** or **--period**: Period [s] of the periodic function. Default is 1.0[s];
+- **-d** or **--dc**: DC component of the periodic function. Default is 0.0;
+- **-a** or **--amplitude**: Amplitude of the periodic function. Default is 1.0;
+- **-p** or **--phase**: Phase shift [rad/s] of the periodic function. Default is 0.0[rad/s];
+- **-f** or **--function**: Case insensitive name of the periodic function. Options are: SIN or SINE; SQR or SQUARE; SAW or SAWTOOTH; TRI or TRIANGLE. Default is SINE;
+- **-e** or **--tolerance**: Tolerance for the stopping criteria. Default is 0.1.
 
-Functions to be approximated:
-1. Sine
-2. Square
-3. Sawtooth
-4. Triangle
+![](./sawtooth.gif)
 
-Stopping criteria: RMSE < 0.1
+**NOTE**: The analysis.py script only animates the 50 first harmonics.
