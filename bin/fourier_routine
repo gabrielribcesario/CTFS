@@ -2,9 +2,8 @@
 
 # https://labex.io/tutorials/shell-bash-getopt-391993
 OPTS=$(getopt -o t:d:a:p:f:e: --long period:,dc:,amplitude:,phase:,function:,tolerance: -n 'fourier_routine' -- "$@")
-
 if [ $? -ne 0 ]; then
-  echo "Failed to parse options" >&2
+  echo "Internal error! Failed to parse options." >&2
   exit 1
 fi
 
@@ -19,6 +18,7 @@ FUNC="SINE" # Function. Options are: sine; square; saw; triangle.
 TOL="0.1" # Stopping criteria (RMSE < tol)
 
 # Parse optional arguments
+echo "Parsing optional arguments..."
 while true; do
     case "$1" in
         -t | --period)
@@ -69,19 +69,25 @@ while true; do
             break
             ;;
         *)
-            echo "Internal error!"
+            echo "Internal error! Failed to parse options."
             exit 1
             ;;
     esac
 done
+echo "Done."
 
 # Compile executable
 mkdir -p ../build
 cd ../build
-#if [ ! -f "ctfs" ]; then
-gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
-#fi
-echo "$?"
+if [ ! -f "ctfs" ]; then
+    echo "Compiling executable..."
+    gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
+    if [ $? -ne 0 ]; then
+        echo "Internal error! Compilation failed."
+        exit 1
+    fi
+    echo "Done."
+fi
 
 # Run analysis
 echo "Running calculations..."
@@ -92,19 +98,41 @@ echo "|   Phase: $PHI [rad/s]"
 echo "|   Function: $FUNC"
 echo "|   Tolerance: $TOL"
 ./ctfs "$T0" "$DC" "$A" "$PHI" "$FUNC" "$TOL"
-EXIT_STATUS="$?"
-
-# Check exit status
-if [ $EXIT_STATUS == "0" ]; then
-    echo "Done."
-    mkdir -p "$FUNC/data" "$FUNC/figures"
-    rm -f "$FUNC/data/*.dat"
-    mv -t "$FUNC/data" *.dat
-    cd ../bin
-    # Plot Fourier Series calculation output
-    python3 -m analysis -t "$T0" -d "$DC" -a "$A" -p "$PHI" -f "$FUNC" -e "$TOL"
-else
-    echo "Internal error!"
+if [ $? -ne 0 ]; then
+    echo "Internal error! Failed to complete calculations"
     exit 1
 fi
+echo "Done."
+
+# Move output
+mkdir -p "$FUNC/data" "$FUNC/figures"
+rm -f "$FUNC/data/*.dat"
+mv -t "$FUNC/data" *.dat
+cd ..
+
+# Create and activate venv
+if [ ! -d "ctfs" ]; then
+    ./bin/create_venv
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+fi
+echo "Activating venv..."
+source ctfs/bin/activate
+if [ $? -ne 0 ]; then
+    echo "Internal error! Could not activate the virtual environment."
+    exit 1
+fi
+echo "Done."
+
+# Plot output of calculations
+cd bin
+echo "Running analysis..."
+python3 -m analysis -t "$T0" -d "$DC" -a "$A" -p "$PHI" -f "$FUNC" -e "$TOL"
+if [ $? -ne 0 ]; then
+    echo "Internal error! Failed to plot the results."
+    exit 1
+fi
+echo "Done."
+
 exit 0
