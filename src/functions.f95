@@ -7,7 +7,7 @@ MODULE functions
     REAL(dp), PARAMETER :: M_1_TAU = 1.0_dp / M_TAU
 
     PRIVATE
-    PUBLIC :: f_t, sinusoidal, square, sawtooth, triangle
+    PUBLIC :: f_t, sine, square, sawtooth, triangle
 
     ABSTRACT INTERFACE
         REAL(dp) PURE FUNCTION f_t(t, p) RESULT(y)
@@ -19,7 +19,7 @@ MODULE functions
     END INTERFACE
 
     CONTAINS
-        REAL(dp) PURE FUNCTION sinusoidal(t, p) RESULT(y)
+        REAL(dp) PURE FUNCTION sine(t, p) RESULT(y)
             ! Periodic sine wave
             ! y = DC + A*sin[ t/(2pi) + phi ]
             IMPLICIT NONE
@@ -60,6 +60,8 @@ MODULE functions
             IMPLICIT NONE
             REAL(dp), INTENT(IN) :: t
             REAL(dp), INTENT(IN) :: p(4) ! [t0, DC, A, phi]
-            y = p(2) + p(3) * (4.0_dp * abs(0.5_dp * p(1) - mod(t - 0.25_dp * p(1) + p(4) * p(1) * M_1_TAU, p(1))) / p(1) - 1.0_dp)
+            REAL(dp) :: rad
+            rad = t - 0.25_dp * p(1) + p(4) * p(1) * M_1_TAU
+            y = p(2) + p(3) * (4.0_dp * abs((0.5_dp * p(1) - modulo(rad, p(1))) / p(1)) - 1.0_dp)
         END FUNCTION
 END MODULE

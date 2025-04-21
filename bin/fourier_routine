@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# https://labex.io/tutorials/shell-bash-getopt-391993
+OPTS=$(getopt -o t:d:a:p:f:e: --long period:,dc:,amplitude:,phase:,function:,tolerance: -n 'fourier_routine' -- "$@")
+
+if [ $? -ne 0 ]; then
+  echo "Failed to parse options" >&2
+  exit 1
+fi
+
+eval set -- "$OPTS"
+
+# Initialize variables
+T0="1.0" # Period t_0 [s]
+DC="0.0" # DC component
+A="1.0" # Amplitude
+PHI="0.0" # Phase [rad/s]
+FUNC="SINE" # Function. Options are: sine; square; saw; triangle.
+TOL="0.1" # Stopping criteria (RMSE < tol)
+
+# Parse optional arguments
+while true; do
+    case "$1" in
+        -t | --period)
+            T0="$2"
+            shift 2
+            ;;
+        -d | --DC)
+            DC="$2"
+            shift 2
+            ;;
+        -a | --amplitude)
+            A="$2"
+            shift 2
+            ;;
+        -p | --phase)
+            PHI="$2"
+            shift 2
+            ;;
+        -e | --tolerance)
+            TOL="$2"
+            shift 2
+            ;;
+        -f | --function)
+            FUNC="$2"
+            FUNC=${FUNC^^}
+            case "$FUNC" in
+                "SIN" | "SINE")
+                    FUNC="SINE"
+                    ;;
+                "SQR" | "SQUARE")
+                    FUNC="SQUARE"
+                    ;;
+                "SAW" | "SAWTOOTH")
+                    FUNC="SAWTOOTH"
+                    ;;
+                "TRI" | "TRIANGLE")
+                    FUNC="TRIANGLE"
+                    ;;
+                *)
+                    echo "FunctionNotImplemented Error: $FUNC. Options are: sine, sin, square, sqr, sawtooth, saw, triangle, tri."
+                    exit 1
+                    ;;
+            esac
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Internal error!"
+            exit 1
+            ;;
+    esac
+done
+
+# Compile executable
+mkdir -p ../build
+cd ../build
+#if [ ! -f "ctfs" ]; then
+gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
+#fi
+echo "$?"
+
+# Run analysis
+echo "Running calculations..."
+echo "|   Period: $T0 [s]"
+echo "|   DC: $DC"
+echo "|   Amplitude: $A"
+echo "|   Phase: $PHI [rad/s]"
+echo "|   Function: $FUNC"
+echo "|   Tolerance: $TOL"
+./ctfs "$T0" "$DC" "$A" "$PHI" "$FUNC" "$TOL"
+EXIT_STATUS="$?"
+
+# Check exit status
+if [ $EXIT_STATUS == "0" ]; then
+    echo "Done."
+    mkdir -p "$FUNC/data" "$FUNC/figures"
+    rm -f "$FUNC/data/*.dat"
+    mv -t "$FUNC/data" *.dat
+    cd ../bin
+    # Plot Fourier Series calculation output
+    python3 -m analysis -t "$T0" -d "$DC" -a "$A" -p "$PHI" -f "$FUNC" -e "$TOL"
+else
+    echo "Internal error!"
+    exit 1
+fi
+exit 0

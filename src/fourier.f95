@@ -6,10 +6,10 @@ MODULE fourier
     REAL(dp), PARAMETER :: M_TAU = 2.0_dp * 3.14159265358979323846_dp
 
     PRIVATE
-    PUBLIC :: ctft_coefficients
+    PUBLIC :: ctfs_coefficients
 
     CONTAINS
-        SUBROUTINE ctft_coefficients(f, p, eps, tol, max_iter, coeff, nrun)
+        SUBROUTINE ctfs_coefficients(f, p, eps, tol, max_iter, coeff, history, nrun)
             USE iso_fortran_env, ONLY : dp=>REAL64
             IMPLICIT NONE
             PROCEDURE(f_t), POINTER, INTENT(IN) :: f ! Function to be approximated
@@ -18,18 +18,19 @@ MODULE fourier
             REAL(dp), INTENT(IN) :: eps ! Trapezoid integration maximum interval width
             REAL(dp), INTENT(IN) :: tol ! Stopping criteria tolerance
             COMPLEX(dp), INTENT(OUT) :: coeff(max_iter) ! Fourier coefficients
-            INTEGER, INTENT(OUT) :: nrun ! <= max_iter
+            REAL(dp), INTENT(OUT) :: history(2, max_iter) ! [MSE, mse] history
+            INTEGER, INTENT(OUT) :: nrun ! Less than or equal to max_iter
 
             COMPLEX(dp) :: area, jw ! Helper variables for the trapezoidal rule integration step
             REAL(dp) :: t0 ! Period [s]
             REAL(dp), ALLOCATABLE :: signal(:) ! Function to be approximated, evaluated at the points that define the integration subintervals
             REAL(dp), ALLOCATABLE :: err(:) ! Residual, i.e. err(t) = signal(t) - Σ D_n*exp(jnw*t)
-            REAL(dp) :: w0, h_n, rmse
+            REAL(dp) :: w0, h_n, mse
             INTEGER :: i, n
             INTEGER :: nsteps
 
             t0 = p(1) ! Period [s]. Integration bounds are always [0, t0]
-            nsteps = ceiling(t0 / eps) ! ~1E-5 width intervals should be more than accurate enough
+            nsteps = ceiling(t0 / eps) ! ~1E-5-1E-6 width intervals should be more than accurate enough
             h_n = t0 / nsteps ! Integration interval width
             w0 = M_TAU / t0 ! Fundamental frequency [rad/s], w0 = 2pi/T0
 
@@ -49,34 +50,36 @@ MODULE fourier
                 DO i = 2, nsteps
                     area = area + signal(i) * exp( -jw * (i - 1) * h_n )
                 END DO
-                area = area / nsteps ! area = area * h_n / t0, h_n = t0 / nsteps
+                area = area / nsteps ! area = area * h_n / t0; h_n = t0 / nsteps
                 coeff(n) = area ! n-th coefficient
 
-                ! Check stopping criteria: RMSE = sqrt( ∫[(f(t) - g(t))^2]dt / ∫dt )
+                ! Check stopping criteria: mse = sqrt( ∫[(f(t) - g(t))^2]dt / ∫dt )
                 IF (n == 1) THEN ! Remove DC component from the signal
                     coeff(1)%im = 0.0_dp ! Also make Im(D_1) = 0
                     err(1) = err(1) - REAL(coeff(1))
                     err(nsteps + 1) = err(nsteps + 1) - REAL(coeff(1))
-                    rmse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
+                    mse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
                     DO i = 2, nsteps
                         err(i) = err(i) - REAL(coeff(1))
-                        rmse = rmse + err(i)**2
+                        mse = mse + err(i)**2
                     END DO
                 ELSE
                     err(1) = err(1) - 2.0_dp * REAL(coeff(n))
                     err(nsteps + 1) = err(nsteps + 1) - 2.0_dp * REAL(coeff(n) * exp( jw * t0 ))
-                    rmse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
+                    mse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
                     DO i = 2, nsteps
                         err(i) = err(i) - 2.0_dp * REAL(coeff(n) * exp( jw * (i - 1) * h_n ))
-                        rmse = rmse + err(i)**2
+                        mse = mse + err(i)**2
                     END DO
                 END IF
-                rmse = sqrt( rmse / (nsteps * t0) ) ! rmse = sqrt( rmse * h_n / t0^2 ), h_n = t0 / nsteps
+                mse = mse / (nsteps * t0) ! mse = mse * h_n / t0^2; h_n = t0 / nsteps
+                history(1, n) = mse ! MSE
+                history(2, n) = sqrt( mse ) ! RMSE
 
                 ! Stop if RMSE < tol
-                IF (rmse < tol) EXIT
+                IF (history(2, n) < tol) EXIT
             END DO
-            nrun = n
+            nrun = min(n, max_iter)
 
             DEALLOCATE(signal)
             DEALLOCATE(err)
