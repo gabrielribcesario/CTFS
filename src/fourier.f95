@@ -29,7 +29,7 @@ MODULE fourier
             INTEGER :: nsteps
 
             t0 = p(1) ! Period [s]. Integration bounds are always [0, t0]
-            nsteps = ceiling(t0 / eps) ! ~1E-5-1E-6 width intervals should be more than accurate enough
+            nsteps = ceiling(t0 / eps) ! ~1E-5 width intervals should be accurate enough
             h_n = t0 / nsteps ! Integration interval width
             w0 = M_TAU / t0 ! Fundamental frequency [rad/s], w0 = 2pi/T0
 
@@ -45,7 +45,7 @@ MODULE fourier
             DO n = 1, max_iter
                 jw = COMPLEX(0.0_dp, (n - 1) * w0) ! Complex frequency [rad/s]
                 ! Trapezoidal rule integration
-                area = (signal(1) + signal(nsteps + 1) * exp( -jw * t0 )) / 2.0_dp
+                area = signal(1) ! f(0) = f(t0), exp(-jwt0) = 1
                 DO i = 2, nsteps
                     area = area + signal(i) * exp( -jw * (i - 1) * h_n )
                 END DO
@@ -58,7 +58,7 @@ MODULE fourier
                 err(nsteps + 1) = err(nsteps + 1) - kk * REAL(coeff(n) * exp( jw * t0 ))
                 ! Check stopping criteria: MSE = ∫[(f(t) - g(t))^2]dt / ∫dt. 
                 ! Trapezoidal rule integration
-                mse = (err(1)**2 + err(nsteps + 1)**2) / 2.0_dp
+                mse = err(1)**2 ! f(0) = f(t0), exp(-jwt0) = 1
                 DO i = 2, nsteps
                     err(i) = err(i) - kk * REAL(coeff(n) * exp( jw * (i - 1) * h_n )) ! Update the residual
                     mse = mse + err(i)**2
@@ -70,9 +70,8 @@ MODULE fourier
                 ! Stop if RMSE < tol
                 IF (history(2, n) < tol) EXIT
             END DO
-            nrun = min(n, max_iter)
-
             DEALLOCATE(signal)
             DEALLOCATE(err)
+            nrun = min(n, max_iter)
         END SUBROUTINE
 END MODULE
