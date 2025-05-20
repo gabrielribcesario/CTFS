@@ -111,9 +111,9 @@ cd "$(dirname "$0")"
 # Compile executable
 mkdir -p ../build
 cd ../build
-if [ ! -f "ctfs_linux" ]; then
+if [ ! -f "ctfs" ]; then
     echo "Compiling executable..."
-    gfortran -o ctfs_linux ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
+    gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
     if [ $? -ne 0 ]; then
         echo "Internal error! Compilation failed." >&2
         exit 1
@@ -126,10 +126,10 @@ echo "Running calculations..."
 echo "|   Period: $PERIOD [s]"
 echo "|   DC: $DC"
 echo "|   Amplitude: $AMPLITUDE"
-echo "|   Phase: $PHASE [rad/s]"
+echo "|   Phase: $PHASE [rad]"
 echo "|   Function: $FUNCTION"
 echo "|   Tolerance: $TOLERANCE"
-./ctfs_linux "$PERIOD" "$DC" "$AMPLITUDE" "$PHASE" "$FUNCTION" "$TOLERANCE"
+./ctfs "$PERIOD" "$DC" "$AMPLITUDE" "$PHASE" "$FUNCTION" "$TOLERANCE"
 if [ $? -ne 0 ]; then
     echo "Internal error! Failed to complete the calculations." >&2
     exit 1

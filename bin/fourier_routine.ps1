@@ -5,7 +5,12 @@ param(
     [switch]$HELP,
 
     [Alias("t")]
-    [ValidateRange("Positive")]
+    [ValidateScript({
+                    if ($_ -eq 0.0) {
+                        throw "Cannot validate argument on parameter 'PERIOD': The argument '{0}' cannot be validated because its value is not greater than zero."
+                    }
+                    return $true
+                    })]
     [double]$PERIOD=1.0,
 
     [Alias("d")]
@@ -22,7 +27,12 @@ param(
     [string]$FUNCTION="SINE",
 
     [Alias("e")]
-    [ValidateRange("Positive")]
+    [ValidateScript({
+                    if ($_ -eq 0.0) {
+                        throw "Cannot validate argument on parameter 'TOLERANCE': The argument '{0}' cannot be validated because its value is not greater than zero."
+                    }
+                    return $true
+                    })]
     [double]$TOLERANCE=0.1
 )
 
@@ -39,19 +49,23 @@ if ($HELP) {
 }
 
 $FUNCTION=$FUNCTION.ToUpper()
+if ($FUNCTION -eq "SIN" -or $FUNCTION -eq "SINE") { $FUNCTION="SINE" }
+elseif ($FUNCTION -eq "SQR" -or $FUNCTION -eq "SQUARE") { $FUNCTION="SQUARE" }
+elseif ($FUNCTION -eq "SAW" -or $FUNCTION -eq "SAWTOOTH") { $FUNCTION="SAWTOOTH" }
+elseif ($FUNCTION -eq "TRI" -or $FUNCTION -eq "TRIANGLE") { $FUNCTION="TRIANGLE" }
 
 # Store current location
 Push-Location
 
 # cd to script
-Set-Location "$(Split-Path $MyInvocation.MyCommand.Path)"
+Set-Location -Path "$PSScriptRoot"
 
 # Compile executable
-mkdir -p ../build
-Set-Location ../build
-if (-Not (Test-Path -Path "ctfs_win")) {
+New-Item -ItemType "Directory" -Force -Path ../build | Out-Null
+Set-Location -Path ../build
+if (-Not (Test-Path -Path "ctfs.exe")) {
     Write-Output "Compiling executable..."
-    gfortran -o ctfs_win ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
+    gfortran -o ctfs.exe ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Internal error! Compilation failed."
         Pop-Location
@@ -65,10 +79,10 @@ Write-Output "Running calculations..."
 Write-Output "|   Period: $PERIOD [s]"
 Write-Output "|   DC: $DC"
 Write-Output "|   Amplitude: $AMPLITUDE"
-Write-Output "|   Phase: $PHASE [rad/s]"
+Write-Output "|   Phase: $PHASE [rad]"
 Write-Output "|   Function: $FUNCTION"
 Write-Output "|   Tolerance: $TOLERANCE"
-./ctfs_win "$PERIOD" "$DC" "$AMPLITUDE" "$PHASE" "$FUNCTION" "$TOLERANCE"
+./ctfs.exe "$PERIOD" "$DC" "$AMPLITUDE" "$PHASE" "$FUNCTION" "$TOLERANCE"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Internal error! Failed to complete the calculations."
     Pop-Location
@@ -77,10 +91,11 @@ if ($LASTEXITCODE -ne 0) {
 Write-Output "Done."
 
 # Move output
-mkdir -p "$FUNCTION/data" "$FUNCTION/figures"
-rm -f "$FUNCTION/data/*.dat"
-mv -t "$FUNCTION/data" *.dat
-Set-Location ..
+New-Item -Force -ItemType "Directory" -Path "$FUNCTION/data" | Out-Null
+New-Item -Force -ItemType "Directory" -Path "$FUNCTION/figures" | Out-Null
+Remove-Item -Path "$FUNCTION/data/*.dat"
+Move-Item -Path *.dat -Destination "$FUNCTION/data"
+Set-Location -Path ..
 
 # Create and activate venv
 if (-Not (Test-Path -Path "ctfs")) {
@@ -91,7 +106,7 @@ if (-Not (Test-Path -Path "ctfs")) {
     }
 }
 Write-Output "Activating venv..."
-./ctfs/Scripts/Activate.ps1
+./ctfs/Scripts/Activate.ps1 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Internal error! Could not activate the virtual environment."
     Pop-Location
@@ -100,9 +115,9 @@ if ($LASTEXITCODE -ne 0) {
 Write-Output "Done."
 
 # Plot output of calculations
-Set-Location bin
+Set-Location -Path bin
 Write-Output "Running analysis..."
-python3 -m analysis -t "$PERIOD" -d "$DC" -a "$AMPLITUDE" -p "$PHASE" -f "$FUNCTION" -e "$TOLERANCE"
+python -m analysis -t "$PERIOD" -d "$DC" -a "$AMPLITUDE" -p "$PHASE" -f "$FUNCTION" -e "$TOLERANCE"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Internal error! Failed to plot the results."
     Pop-Location

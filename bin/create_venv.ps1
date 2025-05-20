@@ -8,22 +8,22 @@ Write-Output "Creating venv..."
 Push-Location
 
 # cd to script
-Set-Location "$(Split-Path $MyInvocation.MyCommand.Path)/.."
+Set-Location -Path "$PSScriptRoot/.."
 
 # Create venv
-python3 -m venv ctfs
+python -m venv ctfs
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Internal error! Could not create virtual environment."
     Pop-Location
     exit 1
 }
 # Activate venv
-./ctfs/bin/Activate.ps1
+./ctfs/Scripts/Activate.ps1
 
 Write-Output "Installing required packages..."
 
 # Install pip
-python3 -m pip install pip --upgrade
+python -m pip install pip --upgrade
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Internal error! Could not install pip."
     Pop-Location
