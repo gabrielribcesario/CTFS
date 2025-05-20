@@ -1,32 +1,32 @@
 #!/bin/bash
 
-cd "$(dirname "$0")"
-
 # https://labex.io/tutorials/shell-bash-getopt-391993
-OPTS=$(getopt -o t:d:a:p:f:e: --long period:,dc:,amplitude:,phase:,function:,tolerance: -n 'fourier_routine' -- "$@")
+OPTS=$(getopt -o t:d:a:p:f:e:h --long period:,dc:,amplitude:,phase:,function:,tolerance:,help -n 'fourier_routine' -- "$@")
 if [ $? -ne 0 ]; then
-  echo "Internal error! Failed to parse options." >&2
-  exit 1
+    echo "Internal error! Failure to get optional arguments." >&2
+    exit 1
 fi
 
 eval set -- "$OPTS"
 
 # Initialize variables
-T0="1.0" # Period t_0 [s]
+PERIOD="1.0" # Period t_0 [s]
 DC="0.0" # DC component
-A="1.0" # Amplitude
-PHI="0.0" # Phase [rad/s]
-FUNC="SINE" # Function. Options are: sine; square; saw; triangle.
-TOL="0.1" # Stopping criteria (RMSE < tol)
+AMPLITUDE="1.0" # Amplitude
+PHASE="0.0" # Phase [rad/s]
+FUNCTION="SINE" # Function. Options are: sine; square; saw; triangle.
+TOLERANCE="0.1" # Stopping criteria (RMSE < tol)
+HELP=false
 
 # Parse optional arguments
-echo "Parsing optional arguments..."
 while true; do
     case "$1" in
         -t | --period)
-            T0="$2"
-            if (($(bc -l <<< "$T0 <= 0.0"))); then
-                echo "ValueError: Period must be greater than zero.. Value is: $T0"
+            PERIOD="$2"
+            if (($(bc -l <<< "$PERIOD <= 0.0"))); then
+                echo "Cannot validate argument on parameter 'PERIOD':"\
+                     "The argument '$PERIOD' cannot be validated because"\
+                     "its value is not greater than zero." >&2
                 exit 1
             fi
             shift 2
@@ -36,17 +36,19 @@ while true; do
             shift 2
             ;;
         -a | --amplitude)
-            A="$2"
+            AMPLITUDE="$2"
             shift 2
             ;;
         -p | --phase)
-            PHI="$2"
+            PHASE="$2"
             shift 2
             ;;
         -e | --tolerance)
-            TOL="$2"
-            if (($(bc -l <<< "$TOL <= 0.0"))); then
-                echo "ValueError: Tolerance must be greater than zero. Value is: $TOL"
+            TOLERANCE="$2"
+            if (($(bc -l <<< "$TOLERANCE <= 0.0"))); then
+                echo "Cannot validate argument on parameter 'TOLERANCE':"\
+                     "The argument '$TOLERANCE' cannot be validated because"\
+                     "its value is not greater than zero." >&2
                 exit 1
             fi
             shift 2
@@ -54,7 +56,7 @@ while true; do
         -f | --function)
             FUNC="$2"
             FUNC=${FUNC^^}
-            case "$FUNC" in
+            case "$FUNCTION" in
                 "SIN" | "SINE")
                     FUNC="SINE"
                     ;;
@@ -68,32 +70,52 @@ while true; do
                     FUNC="TRIANGLE"
                     ;;
                 *)
-                    echo "FunctionNotImplementedError: $FUNC. Options are: sine, sin, square, sqr, sawtooth, saw, triangle, tri."
+                    echo "Cannot validate argument on parameter 'FUNC':"\
+                         "The argument '$FUNCTION' does not belong to the set"\
+                         "'SIN, SINE, SQR, SQUARE, SAW, SAWTOOTH, TRI, TRIANGLE'" >&2
                     exit 1
                     ;;
             esac
             shift 2
+            ;;
+        -h | --help)
+            HELP=true
+            shift
             ;;
         --)
             shift
             break
             ;;
         *)
-            echo "Internal error! Failed to parse options."
+            echo "Internal error! Failed to parse options." >&2
             exit 1
             ;;
     esac
 done
-echo "Done."
+
+if ($HELP); then
+    echo "Options:"
+    echo "  -t, --period             Period [s] (> 0.0) of the periodic function. Default is 1.0[s]."
+    echo "  -d, --dc                 DC component of the periodic function. Default is 0.0."
+    echo "  -a, --amplitude          Amplitude of the periodic function. Default is 1.0."
+    echo "  -p, --phase              Phase shift [rad] of the periodic function. Default is 0.0[rad]."
+    echo "  -f, --function           Case insensitive name of the periodic function. Options are: SIN or SINE; SQR or SQUARE;"
+    echo "                           SAW or SAWTOOTH; TRI or TRIANGLE. Default is SINE."
+    echo "  -e, --tolerance          Tolerance (> 0.0) for the stopping criteria. Default is 0.1."
+    exit 0
+fi
+
+# cd to script
+cd "$(dirname "$0")"
 
 # Compile executable
 mkdir -p ../build
 cd ../build
-if [ ! -f "ctfs" ]; then
+if [ ! -f "ctfs_linux" ]; then
     echo "Compiling executable..."
-    gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
+    gfortran -o ctfs_linux ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
     if [ $? -ne 0 ]; then
-        echo "Internal error! Compilation failed."
+        echo "Internal error! Compilation failed." >&2
         exit 1
     fi
     echo "Done."
@@ -101,23 +123,23 @@ fi
 
 # Run analysis
 echo "Running calculations..."
-echo "|   Period: $T0 [s]"
+echo "|   Period: $PERIOD [s]"
 echo "|   DC: $DC"
-echo "|   Amplitude: $A"
-echo "|   Phase: $PHI [rad/s]"
-echo "|   Function: $FUNC"
-echo "|   Tolerance: $TOL"
-./ctfs "$T0" "$DC" "$A" "$PHI" "$FUNC" "$TOL"
+echo "|   Amplitude: $AMPLITUDE"
+echo "|   Phase: $PHASE [rad/s]"
+echo "|   Function: $FUNCTION"
+echo "|   Tolerance: $TOLERANCE"
+./ctfs_linux "$PERIOD" "$DC" "$AMPLITUDE" "$PHASE" "$FUNCTION" "$TOLERANCE"
 if [ $? -ne 0 ]; then
-    echo "Internal error! Failed to complete calculations"
+    echo "Internal error! Failed to complete the calculations." >&2
     exit 1
 fi
 echo "Done."
 
 # Move output
-mkdir -p "$FUNC/data" "$FUNC/figures"
-rm -f "$FUNC/data/*.dat"
-mv -t "$FUNC/data" *.dat
+mkdir -p "$FUNCTION/data" "$FUNCTION/figures"
+rm -f "$FUNCTION/data/*.dat"
+mv -t "$FUNCTION/data" *.dat
 cd ..
 
 # Create and activate venv
@@ -130,7 +152,7 @@ fi
 echo "Activating venv..."
 source ctfs/bin/activate
 if [ $? -ne 0 ]; then
-    echo "Internal error! Could not activate the virtual environment."
+    echo "Internal error! Could not activate the virtual environment." >&2
     exit 1
 fi
 echo "Done."
@@ -138,9 +160,9 @@ echo "Done."
 # Plot output of calculations
 cd bin
 echo "Running analysis..."
-python3 -m analysis -t "$T0" -d "$DC" -a "$A" -p "$PHI" -f "$FUNC" -e "$TOL"
+python3 -m analysis -t "$PERIOD" -d "$DC" -a "$AMPLITUDE" -p "$PHASE" -f "$FUNCTION" -e "$TOLERANCE"
 if [ $? -ne 0 ]; then
-    echo "Internal error! Failed to plot the results."
+    echo "Internal error! Failed to plot the results." >&2
     exit 1
 fi
 echo "Done."
