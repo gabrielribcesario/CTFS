@@ -1,4 +1,4 @@
-PROGRAM ctft
+PROGRAM ctfs
     USE iso_fortran_env, ONLY : dp=>REAL64
     USE fourier
     USE functions
