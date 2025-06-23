@@ -54,20 +54,20 @@ while true; do
             shift 2
             ;;
         -f | --function)
-            FUNC="$2"
-            FUNC=${FUNC^^}
+            FUNCTION="$2"
+            FUNCTION=${FUNCTION^^}
             case "$FUNCTION" in
                 "SIN" | "SINE")
-                    FUNC="SINE"
+                    FUNCTION="SINE"
                     ;;
                 "SQR" | "SQUARE")
-                    FUNC="SQUARE"
+                    FUNCTION="SQUARE"
                     ;;
                 "SAW" | "SAWTOOTH")
-                    FUNC="SAWTOOTH"
+                    FUNCTION="SAWTOOTH"
                     ;;
                 "TRI" | "TRIANGLE")
-                    FUNC="TRIANGLE"
+                    FUNCTION="TRIANGLE"
                     ;;
                 *)
                     echo "Cannot validate argument on parameter 'FUNC':"\
