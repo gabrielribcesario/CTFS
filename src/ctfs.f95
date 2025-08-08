@@ -1,75 +1,73 @@
-PROGRAM ctfs
-    USE iso_fortran_env, ONLY : dp=>REAL64
-    USE fourier
-    USE functions
-    IMPLICIT NONE
+program ctfs
+    use iso_fortran_env, ONLY : dp=>real64, error_unit
+    use fourier
+    use functions
+    implicit none
 
-    ! gfortran -o ctfs functions.f95 fourier.f95 ctfs.f95 -O2
-
-    PROCEDURE(f_t), POINTER :: func => null()
-    INTEGER, PARAMETER :: max_iter = 1001 ! Maximum number of Fourier coefficients
-    REAL(dp), PARAMETER :: M_PI = 3.14159265358979323846_dp
-    REAL(dp) :: tol ! Stopping criteria (RMSE < tol)
-    REAL(dp) :: eps = 1.0E-5_dp ! Integration accuracy
-    REAL(dp) :: t0, DC, A, phi
-    REAL(dp) :: p(4)
-    REAL(dp) :: trig_coeff(2, max_iter) 
-    COMPLEX(dp) :: exp_coeff(max_iter) 
-    REAL(dp) :: history(2, max_iter) ! [MSE, RMSE] history
-    CHARACTER(len=32) :: arg ! Command line arguments
-    INTEGER :: nrun
+    procedure(f_t), pointer :: func => null()
+    integer, parameter :: max_iter = 1001 ! Maximum number of Fourier coefficients
+    real(dp), parameter :: M_PI = 3.14159265358979323846_dp
+    real(dp) :: tol ! Stopping criteria (RMSE < tol)
+    real(dp) :: eps = 1.0E-5_dp ! Integration accuracy
+    real(dp) :: t0, DC, A, phi
+    real(dp) :: p(4)
+    real(dp) :: trig_coeff(2, max_iter) 
+    complex(dp) :: exp_coeff(max_iter) 
+    real(dp) :: history(2, max_iter) ! [MSE, RMSE] history
+    character(len=32) :: arg ! Command line arguments
+    integer :: nrun
 
     !! Parse arguments
     ! Fundamental period [s]
-    CALL get_command_argument(1, arg)
-    READ(arg, fmt=*) t0
+    call get_command_argument(1, arg)
+    read(arg, fmt=*) t0
     ! DC offset
-    CALL get_command_argument(2, arg)
-    READ(arg, fmt=*) DC
+    call get_command_argument(2, arg)
+    read(arg, fmt=*) DC
     ! Amplitude
-    CALL get_command_argument(3, arg)
-    READ(arg, fmt=*) A
+    call get_command_argument(3, arg)
+    read(arg, fmt=*) A
     ! Phase shift
-    CALL get_command_argument(4, arg)
-    READ(arg, fmt=*) phi
+    call get_command_argument(4, arg)
+    read(arg, fmt=*) phi
     ! Function to be approximated
-    CALL get_command_argument(5, arg)
-    IF (ARG == "SINE") THEN
+    call get_command_argument(5, arg)
+    if (ARG == "SINE") then
         func => sine
-    ELSE IF (ARG == "SQUARE") THEN
+    else if (ARG == "SQUARE") then
         func => square 
-    ELSE IF (ARG == "SAWTOOTH") THEN
+    else if (ARG == "SAWTOOTH") then
         func => sawtooth 
-    ELSE IF (ARG == "TRIANGLE") THEN
+    else if (ARG == "TRIANGLE") then
         func => triangle
-    ELSE
-        CALL exit(1)
-    END IF
+    else
+        call exit(1)
+    end if
     ! Tolerance
-    CALL get_command_argument(6, arg)
-    READ(arg, fmt=*) tol
+    call get_command_argument(6, arg)
+    read(arg, fmt=*) tol
 
-    p = [t0, DC, A, phi] ! Parameter vector
+    p = [t0, DC, A, phi] ! parameter vector
 
     ! Exponential series
-    CALL ctfs_coefficients(func, p, eps, tol, max_iter, exp_coeff, history, nrun)
+    call ctfs_coefficients(func, p, eps, tol, max_iter, exp_coeff, history, nrun)
 
-    IF (nrun == max_iter) THEN
-        PRINT *, "SERIES DID NOT CONVERGE (RMSE >= TOL)"
-        PRINT *, "RMSE = ", history(2, max_iter)
-    END IF
+    if (nrun == max_iter) then
+        write(error_unit, '(A)') "SERIES DID NOT CONVERGE (RMSE >= TOL)"
+        write(error_unit, '(A,G0.12)') "RMSE = ", history(2, max_iter)
+    end if
 
     ! Write MSE/RMSE history
-    OPEN(1, file="hist.dat", status="replace", action="write")
-    WRITE(1, '(A)') "MSE,RMSE"
-    WRITE(1, '(G0.12,",",G0.12)') history(:, 1:nrun)
-    CLOSE(1)
+    open(1, file="hist.dat", status="replace", action="write")
+    write(1, '(A)') "MSE,RMSE"
+    write(1, '(G0.12,",",G0.12)') history(:, 1:nrun)
+    close(1)
 
     ! Write exp series to file
-    OPEN(1, file="exp.dat", status="replace", action="write")
-    WRITE(1, '(A)') "Real,Imag"
-    WRITE(1, '(SP,G0.12,",",G0.12)') exp_coeff(1:nrun)
-    CLOSE(1)
+    open(1, file="exp.dat", status="replace", action="write")
+    write(1, '(A)') "Real,Imag"
+    write(1, '(SP,G0.12,",",G0.12)') exp_coeff(1:nrun)
+    close(1)
 
     ! Compact trigonometric series
     trig_coeff(:, 1) = [exp_coeff(1)%re, 0.0_dp] ! C_0 = D_0; Im(D_0) = 0
@@ -78,10 +76,10 @@ PROGRAM ctfs
                                   exp_coeff(2:nrun)%re) ! θ_n = ∠D_n; n > 0
 
     ! Write trig series to file
-    OPEN(1, file="trig.dat", status="replace", action="write")
-    WRITE(1, '(A)') "Amplitude,Phase"
-    WRITE(1, '(SP,G0.12,",",G0.12)') trig_coeff(:, 1:nrun)
-    CLOSE(1)
+    open(1, file="trig.dat", status="replace", action="write")
+    write(1, '(A)') "Amplitude,Phase"
+    write(1, '(SP,G0.12,",",G0.12)') trig_coeff(:, 1:nrun)
+    close(1)
 
-    CALL exit(0) ! EXIT_SUCESS
-END PROGRAM
+    call exit(0) ! EXIT_SUCESS
+end program

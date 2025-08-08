@@ -113,7 +113,7 @@ mkdir -p ../build
 cd ../build
 if [ ! -f "ctfs" ]; then
     echo "Compiling executable..."
-    gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O2
+    gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O3
     if [ $? -ne 0 ]; then
         echo "Internal error! Compilation failed." >&2
         exit 1

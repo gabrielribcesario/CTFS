@@ -30,7 +30,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 # Install requirements.txt
-pip install -r misc/requirements.txt
+pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Internal error! Could not install the required packages."
     Pop-Location
