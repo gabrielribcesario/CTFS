@@ -1,5 +1,4 @@
 /**/*.mod
-/**/.vscode
-/**/__pycache__
-/build
-/ctfs
+/**/.vscode/
+/**/__pycache__/
+/build/

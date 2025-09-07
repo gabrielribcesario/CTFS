@@ -106,11 +106,19 @@ if ($HELP); then
 fi
 
 # cd to script
-cd "$(dirname "$0")"
+cd "$(dirname -- "$0")" # bin
+
+# Create and activate venv
+echo "Activating venv..."
+source ./create_venv
+if [ $? -ne 0 ]; then
+    echo "Internal error! Could not activate the virtual environment." >&2
+    exit 1
+fi
+echo "Done."
 
 # Compile executable
-mkdir -p ../build
-cd ../build
+mkdir -p ../build && cd ../build
 if [ ! -f "ctfs" ]; then
     echo "Compiling executable..."
     gfortran -o ctfs ../src/functions.f95 ../src/fourier.f95 ../src/ctfs.f95 -O3
@@ -141,21 +149,6 @@ mkdir -p "$FUNCTION/data" "$FUNCTION/figures"
 rm -f "$FUNCTION/data/*.dat"
 mv -t "$FUNCTION/data" *.dat
 cd ..
-
-# Create and activate venv
-if [ ! -d "ctfs" ]; then
-    ./bin/create_venv
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
-fi
-echo "Activating venv..."
-source ctfs/bin/activate
-if [ $? -ne 0 ]; then
-    echo "Internal error! Could not activate the virtual environment." >&2
-    exit 1
-fi
-echo "Done."
 
 # Plot output of calculations
 cd bin
