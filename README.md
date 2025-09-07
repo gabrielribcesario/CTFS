@@ -1,10 +1,10 @@
-<h1 align="left">Continuous Time Fourier Series</h1>
+<h1 align="left">Continuous-Time Fourier Series</h1>
 
-Calculation of the Fourier coefficients of continuous time periodic functions using Fortran.
+Calculation of the Fourier coefficients of continuous-time periodic functions using Fortran.
 
 <h1 align="left">Instructions</h1>
 
-Run the Bash script "fourier_routine" or the Windows PowerShell script "fourier_routine.ps1", both located in the bin folder. Use a single dash for specifying a short option and a double dash for long option (e.g. "-o" for short, "--option" for long). Optional arguments are:
+Run the Bash script "fourier_routine" located in the bin folder. Use a single dash for specifying a short option and a double dash for long option (e.g. "-o" for short, "--option" for long). Optional arguments are:
 
 - **-h** or **--help**: Displays the optional arguments of the script;
 - **-t** or **--period**: Period [s] (> 0.0) of the periodic function. Default is 1.0[s];
@@ -16,8 +16,8 @@ Run the Bash script "fourier_routine" or the Windows PowerShell script "fourier_
 
 <h1 align="left"></h1></br>
 
-**NOTE 1**: The analysis.py script only animates the 50 first harmonics. Python>=3.10 required.
+**NOTE 1**: The analysis.py script only animates the 50 first harmonics.
 
-**NOTE 2**: As a safeguard, the Fortran algorithm truncates the series after 1000 coefficients.
+**NOTE 2**: As a safeguard, the Fortran algorithm truncates the series at the 1000th harmonic.
 
 ![Sawtooth wave Fourier Series approximation gif](./misc/sawtooth.gif)

@@ -1,6 +1,6 @@
 # Assignment 1
 
-<h3 align="left">Continuous Time Fourier Series</h3>
+<h3 align="left">Continuous-Time Fourier Series</h3>
 
 1. Calculate the coefficients of the Fourier Series (Compact Trigonometric and Exponential);
 2. Calculate the MSE and the RMSE between the Fourier Series approximation and the original function;
